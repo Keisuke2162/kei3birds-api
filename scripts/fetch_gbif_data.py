@@ -47,12 +47,12 @@ MONTH_TO_SEASON = {
 
 def get_supabase_client():
     url = os.environ.get("SUPABASE_URL")
-    # バッチスクリプトではRLSをバイパスするためService Role Keyを使用
+    # バッチスクリプトではRLSをバイパスするためSecret API Keyを使用
     # bird_species, gbif_observations はRLSで読み取り専用のため、
-    # anon key ではINSERTできない
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    # Publishable Key ではINSERTできない
+    key = os.environ.get("SUPABASE_SECRET_KEY")
     if not url or not key:
-        logger.error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set")
+        logger.error("SUPABASE_URL and SUPABASE_SECRET_KEY must be set")
         sys.exit(1)
     return create_client(url, key)
 
