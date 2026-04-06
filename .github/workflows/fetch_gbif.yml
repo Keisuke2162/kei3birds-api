@@ -1,0 +1,31 @@
+name: Fetch GBIF Data
+
+on:
+  schedule:
+    # 毎日午前3時（JST） = UTC 18:00
+    - cron: "0 18 * * *"
+  workflow_dispatch: # 手動実行用
+
+jobs:
+  fetch-gbif:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install supabase httpx python-dotenv
+
+      - name: Run GBIF fetch script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          python scripts/fetch_gbif_data.py
