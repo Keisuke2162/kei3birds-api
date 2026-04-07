@@ -1,3 +1,4 @@
+import base64
 import json
 import uuid
 from pathlib import Path
@@ -75,10 +76,11 @@ async def identify_bird(
     contents = await file.read()
 
     media_type = file.content_type  # "image/jpeg" or "image/png"
+    image_b64 = base64.standard_b64encode(contents).decode("utf-8")
 
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     message = client.messages.create(
-        model="claude-opus-4-6",
+        model="claude-sonnet-4-6",
         max_tokens=512,
         messages=[
             {
@@ -89,7 +91,7 @@ async def identify_bird(
                         "source": {
                             "type": "base64",
                             "media_type": media_type,
-                            "data": contents,
+                            "data": image_b64,
                         },
                     },
                     {"type": "text", "text": IDENTIFY_PROMPT},
