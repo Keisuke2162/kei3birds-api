@@ -7,7 +7,7 @@ import jwt
 from functools import lru_cache
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jwt.algorithms import RSAAlgorithm
+from jwt.algorithms import RSAAlgorithm, ECAlgorithm
 
 from app.config import get_settings
 
@@ -24,12 +24,15 @@ def _fetch_jwks() -> dict:
     return response.json()
 
 
-def _get_public_key(kid: str):
-    """kid に一致する JWK から RSA 公開鍵オブジェクトを返す。"""
+def _get_public_key(kid: str, alg: str):
+    """kid に一致する JWK から公開鍵オブジェクトを返す。"""
     jwks = _fetch_jwks()
     for key in jwks.get("keys", []):
         if key.get("kid") == kid:
-            return RSAAlgorithm.from_jwk(key)
+            if alg.startswith("ES"):
+                return ECAlgorithm.from_jwk(key)
+            else:
+                return RSAAlgorithm.from_jwk(key)
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Matching public key not found in JWKS",
@@ -48,12 +51,13 @@ def verify_token(
         # kid を取得してから対応する公開鍵で検証
         unverified_header = jwt.get_unverified_header(token)
         kid = unverified_header.get("kid")
-        public_key = _get_public_key(kid)
+        alg = unverified_header.get("alg", "RS256")
+        public_key = _get_public_key(kid, alg)
 
         payload = jwt.decode(
             token,
             public_key,
-            algorithms=["RS256"],
+            algorithms=["RS256", "ES256"],
             options={"verify_aud": False},
         )
         return payload
