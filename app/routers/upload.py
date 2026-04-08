@@ -19,7 +19,7 @@ router = APIRouter(prefix="/upload", tags=["upload"])
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png"}
 
 IDENTIFY_PROMPT = """\
-この画像に写っている鳥の種類を日本産鳥類から特定してください。
+この画像に写っている鳥の種類を特定してください。
 候補を最大3つ、確信度（0〜1）とともに JSON 形式だけで返してください。
 形式：{"candidates": [{"name_ja": "スズメ", "scientific_name": "Passer montanus", "confidence": 0.92}]}
 判定できない場合は candidates を空配列にしてください。
