@@ -1,7 +1,7 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from app.auth import get_current_user_id
-from app.config import get_supabase
+from app.auth import get_current_user_id, get_raw_token
+from app.config import get_supabase_with_token
 from app.models.schemas import Observation, ObservationCreate
 
 router = APIRouter(prefix="/observations", tags=["observations"])
@@ -11,9 +11,10 @@ router = APIRouter(prefix="/observations", tags=["observations"])
 def list_observations(
     species_id: Optional[int] = Query(None),
     user_id: str = Depends(get_current_user_id),
+    token: str = Depends(get_raw_token),
 ):
     """ログインユーザーの撮影記録一覧を返す。"""
-    supabase = get_supabase()
+    supabase = get_supabase_with_token(token)
     query = (
         supabase.table("user_observations")
         .select("*")
@@ -30,9 +31,10 @@ def list_observations(
 def get_observation(
     observation_id: str,
     user_id: str = Depends(get_current_user_id),
+    token: str = Depends(get_raw_token),
 ):
     """指定した撮影記録の詳細を返す。"""
-    supabase = get_supabase()
+    supabase = get_supabase_with_token(token)
     result = (
         supabase.table("user_observations")
         .select("*")
@@ -50,9 +52,10 @@ def get_observation(
 def create_observation(
     body: ObservationCreate,
     user_id: str = Depends(get_current_user_id),
+    token: str = Depends(get_raw_token),
 ):
     """撮影記録を新規登録する。"""
-    supabase = get_supabase()
+    supabase = get_supabase_with_token(token)
 
     record: dict = {
         "user_id": user_id,
@@ -74,9 +77,10 @@ def create_observation(
 def delete_observation(
     observation_id: str,
     user_id: str = Depends(get_current_user_id),
+    token: str = Depends(get_raw_token),
 ):
     """自分の撮影記録を削除する。"""
-    supabase = get_supabase()
+    supabase = get_supabase_with_token(token)
     result = (
         supabase.table("user_observations")
         .delete()
