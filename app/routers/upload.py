@@ -78,16 +78,18 @@ async def identify_bird(
     contents = await file.read()
 
     # Claude API の 5MB 制限に収まるようリサイズ
-    MAX_IMAGE_BYTES = 4_500_000  # 余裕を持って4.5MB
+    MAX_IMAGE_BYTES = 4_000_000  # 余裕を持って4MB
     if len(contents) > MAX_IMAGE_BYTES:
         img = Image.open(io.BytesIO(contents))
-        # アスペクト比を保ったまま縮小
-        max_dim = 1600
-        img.thumbnail((max_dim, max_dim), Image.LANCZOS)
-        buf = io.BytesIO()
         img_format = "JPEG" if file.content_type == "image/jpeg" else "PNG"
-        img.save(buf, format=img_format, quality=85)
-        contents = buf.getvalue()
+        for max_dim, quality in [(1600, 80), (1200, 70), (800, 60)]:
+            img_copy = img.copy()
+            img_copy.thumbnail((max_dim, max_dim), Image.LANCZOS)
+            buf = io.BytesIO()
+            img_copy.save(buf, format=img_format, quality=quality)
+            contents = buf.getvalue()
+            if len(contents) <= MAX_IMAGE_BYTES:
+                break
 
     media_type = file.content_type  # "image/jpeg" or "image/png"
     image_b64 = base64.standard_b64encode(contents).decode("utf-8")
@@ -150,7 +152,7 @@ async def identify_bird(
         candidates.append(
             IdentifyCandidate(
                 species_id=species_id,
-                name_ja=name_ja,
+                name_ja=c.get("name_ja", ""),
                 scientific_name=c.get("scientific_name"),
                 confidence=float(c.get("confidence", 0)),
             )
