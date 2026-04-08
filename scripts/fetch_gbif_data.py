@@ -121,6 +121,7 @@ def upsert_species(supabase, species_map: dict[int, dict]) -> dict[int, int]:
                 "family": info.get("family", ""),
                 "order_name": info.get("order_name", ""),
                 "gbif_taxon_key": taxon_key,
+                "source": "gbif",
             })
 
     if new_species:
