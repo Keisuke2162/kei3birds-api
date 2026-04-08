@@ -101,12 +101,15 @@ async def identify_bird(
     )
 
     raw_text = message.content[0].text.strip()
-    print(f"[identify] Claude raw response: {raw_text}")
+    # Claude が ```json ... ``` で囲むことがあるので除去する
+    if raw_text.startswith("```"):
+        lines = raw_text.split("\n")
+        lines = [l for l in lines if not l.strip().startswith("```")]
+        raw_text = "\n".join(lines).strip()
     try:
         parsed = json.loads(raw_text)
         raw_candidates: list[dict] = parsed.get("candidates", [])
     except json.JSONDecodeError:
-        print(f"[identify] JSON parse failed for: {raw_text}")
         raw_candidates = []
 
     # bird_species テーブルで species_id を解決する
