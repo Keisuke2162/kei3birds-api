@@ -1,4 +1,5 @@
 import base64
+import io
 import json
 import uuid
 from pathlib import Path
@@ -7,6 +8,7 @@ import anthropic
 import boto3
 from botocore.config import Config
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from PIL import Image
 
 from app.auth import get_current_user_id
 from app.config import get_settings, get_supabase
@@ -75,30 +77,46 @@ async def identify_bird(
     settings = get_settings()
     contents = await file.read()
 
+    # Claude API の 5MB 制限に収まるようリサイズ
+    MAX_IMAGE_BYTES = 4_500_000  # 余裕を持って4.5MB
+    if len(contents) > MAX_IMAGE_BYTES:
+        img = Image.open(io.BytesIO(contents))
+        # アスペクト比を保ったまま縮小
+        max_dim = 1600
+        img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+        buf = io.BytesIO()
+        img_format = "JPEG" if file.content_type == "image/jpeg" else "PNG"
+        img.save(buf, format=img_format, quality=85)
+        contents = buf.getvalue()
+
     media_type = file.content_type  # "image/jpeg" or "image/png"
     image_b64 = base64.standard_b64encode(contents).decode("utf-8")
 
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=512,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": image_b64,
+    try:
+        message = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=512,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": image_b64,
+                            },
                         },
-                    },
-                    {"type": "text", "text": IDENTIFY_PROMPT},
-                ],
-            }
-        ],
-    )
+                        {"type": "text", "text": IDENTIFY_PROMPT},
+                    ],
+                }
+            ],
+        )
+    except anthropic.APIError as e:
+        print(f"[identify] Claude API error: {e}")
+        return IdentifyResponse(identified=False, candidates=[])
 
     raw_text = message.content[0].text.strip()
     # Claude が ```json ... ``` で囲むことがあるので除去する
