@@ -2,8 +2,8 @@ name: Fetch GBIF Data
 
 on:
   schedule:
-    # 毎日午前3時（JST） = UTC 18:00
-    - cron: "0 18 * * *"
+    # 毎週月曜 午前3時（JST） = UTC 日曜 18:00
+    - cron: "0 18 * * 0"
   workflow_dispatch: # 手動実行用
 
 jobs:
