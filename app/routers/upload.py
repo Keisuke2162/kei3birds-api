@@ -19,7 +19,7 @@ router = APIRouter(prefix="/upload", tags=["upload"])
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png"}
 
 IDENTIFY_PROMPT = """\
-この画像に写っている鳥の種類を日本産鳥類から特定してください。
+この画像に写っている鳥の種類を特定してください。
 候補を最大3つ、確信度（0〜1）とともに JSON 形式だけで返してください。
 形式：{"candidates": [{"name_ja": "スズメ", "scientific_name": "Passer montanus", "confidence": 0.92}]}
 判定できない場合は candidates を空配列にしてください。
@@ -133,11 +133,13 @@ async def identify_bird(
         raw_candidates = []
 
     # bird_species テーブルで species_id を解決する（学名で照合）
+    # 見つからない場合は source='ai' で自動登録する
     supabase = get_supabase()
     candidates: list[IdentifyCandidate] = []
     for c in raw_candidates:
         species_id = None
         scientific_name = c.get("scientific_name", "")
+        name_ja = c.get("name_ja", "")
         if scientific_name:
             res = (
                 supabase.table("bird_species")
@@ -148,11 +150,28 @@ async def identify_bird(
             )
             if res.data:
                 species_id = res.data[0]["id"]
+            else:
+                # bird_species に存在しない種を自動登録
+                new_species = {
+                    "name_ja": name_ja,
+                    "name_en": "",
+                    "scientific_name": scientific_name,
+                    "family": "",
+                    "order_name": "",
+                    "source": "ai",
+                }
+                try:
+                    insert_res = supabase.table("bird_species").insert(new_species).execute()
+                    if insert_res.data:
+                        species_id = insert_res.data[0]["id"]
+                        print(f"[identify] New species registered: {name_ja} ({scientific_name}) -> id={species_id}")
+                except Exception as e:
+                    print(f"[identify] Failed to register species: {e}")
 
         candidates.append(
             IdentifyCandidate(
                 species_id=species_id,
-                name_ja=c.get("name_ja", ""),
+                name_ja=name_ja,
                 scientific_name=c.get("scientific_name"),
                 confidence=float(c.get("confidence", 0)),
             )
