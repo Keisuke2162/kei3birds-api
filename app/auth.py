@@ -73,6 +73,13 @@ def verify_token(
         )
 
 
+def get_raw_token(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+) -> str:
+    """生のアクセストークン文字列を返す。"""
+    return credentials.credentials
+
+
 def get_current_user_id(payload: dict = Depends(verify_token)) -> str:
     """JWTペイロードから Supabase の user_id (sub) を取り出す。"""
     user_id = payload.get("sub")
