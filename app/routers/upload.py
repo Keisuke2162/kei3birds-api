@@ -130,17 +130,17 @@ async def identify_bird(
     except json.JSONDecodeError:
         raw_candidates = []
 
-    # bird_species テーブルで species_id を解決する
+    # bird_species テーブルで species_id を解決する（学名で照合）
     supabase = get_supabase()
     candidates: list[IdentifyCandidate] = []
     for c in raw_candidates:
         species_id = None
-        name_ja = c.get("name_ja", "")
-        if name_ja:
+        scientific_name = c.get("scientific_name", "")
+        if scientific_name:
             res = (
                 supabase.table("bird_species")
                 .select("id")
-                .eq("name_ja", name_ja)
+                .eq("scientific_name", scientific_name)
                 .limit(1)
                 .execute()
             )
