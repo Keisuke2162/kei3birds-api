@@ -61,7 +61,7 @@ async def upload_photo(
         ContentType=file.content_type,
     )
 
-    public_url = f"{settings.cloudflare_r2_endpoint}/{settings.cloudflare_r2_bucket}/{key}"
+    public_url = f"{settings.cloudflare_r2_public_url}/{key}"
     return UploadPhotoResponse(url=public_url)
 
 
