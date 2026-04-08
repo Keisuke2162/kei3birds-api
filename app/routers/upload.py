@@ -20,6 +20,7 @@ ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png"}
 
 IDENTIFY_PROMPT = """\
 この画像に写っている鳥の種類を特定してください。
+画像の中に小さく写っている場合も、拡大して注意深く観察し、体型・色・模様・くちばしの形などから判断してください。
 候補を最大3つ、確信度（0〜1）とともに JSON 形式だけで返してください。
 形式：{"candidates": [{"name_ja": "スズメ", "scientific_name": "Passer montanus", "confidence": 0.92}]}
 判定できない場合は candidates を空配列にしてください。
@@ -82,7 +83,7 @@ async def identify_bird(
     if len(contents) > MAX_IMAGE_BYTES:
         img = Image.open(io.BytesIO(contents))
         img_format = "JPEG" if file.content_type == "image/jpeg" else "PNG"
-        for max_dim, quality in [(1600, 80), (1200, 70), (800, 60)]:
+        for max_dim, quality in [(2000, 85), (1600, 75), (1200, 65)]:
             img_copy = img.copy()
             img_copy.thumbnail((max_dim, max_dim), Image.LANCZOS)
             buf = io.BytesIO()
