@@ -51,6 +51,9 @@ class AiCandidate(BaseModel):
 
 class ObservationCreate(BaseModel):
     species_id: Optional[int] = None
+    ai_species_id: Optional[int] = None
+    name_ja: Optional[str] = None
+    scientific_name: Optional[str] = None
     photo_url: str
     taken_at: Optional[datetime] = None
     lat: Optional[float] = None
@@ -63,6 +66,9 @@ class Observation(BaseModel):
     id: str
     user_id: str
     species_id: Optional[int] = None
+    ai_species_id: Optional[int] = None
+    name_ja: Optional[str] = None
+    scientific_name: Optional[str] = None
     photo_url: Optional[str] = None
     taken_at: Optional[datetime] = None
     location_name: Optional[str] = None
@@ -81,6 +87,7 @@ class UploadPhotoResponse(BaseModel):
 
 class IdentifyCandidate(BaseModel):
     species_id: Optional[int] = None
+    ai_species_id: Optional[int] = None
     name_ja: str
     scientific_name: Optional[str] = None
     confidence: float

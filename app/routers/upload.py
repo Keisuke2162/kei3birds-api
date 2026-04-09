@@ -133,45 +133,60 @@ async def identify_bird(
     except json.JSONDecodeError:
         raw_candidates = []
 
-    # bird_species テーブルで species_id を解決する（学名で照合）
-    # 見つからない場合は source='ai' で自動登録する
+    # 1. bird_species (GBIF) で学名照合 → マッチすれば species_id + DB側 name_ja を使用
+    # 2. マッチしなければ ai_species で学名照合 → あればその ai_species_id + name_ja を使用
+    # 3. どちらにもなければ ai_species に新規登録して ai_species_id を返す
     supabase = get_supabase()
     candidates: list[IdentifyCandidate] = []
     for c in raw_candidates:
         species_id = None
+        ai_species_id = None
         scientific_name = c.get("scientific_name", "")
         name_ja = c.get("name_ja", "")
+
         if scientific_name:
+            # 1. bird_species (GBIF) を検索
             res = (
                 supabase.table("bird_species")
-                .select("id")
+                .select("id, name_ja")
                 .eq("scientific_name", scientific_name)
                 .limit(1)
                 .execute()
             )
             if res.data:
                 species_id = res.data[0]["id"]
+                db_name_ja = res.data[0].get("name_ja")
+                if db_name_ja:
+                    name_ja = db_name_ja
             else:
-                # bird_species に存在しない種を自動登録
-                new_species = {
-                    "name_ja": name_ja,
-                    "name_en": "",
-                    "scientific_name": scientific_name,
-                    "family": "",
-                    "order_name": "",
-                    "source": "ai",
-                }
-                try:
-                    insert_res = supabase.table("bird_species").insert(new_species).execute()
-                    if insert_res.data:
-                        species_id = insert_res.data[0]["id"]
-                        print(f"[identify] New species registered: {name_ja} ({scientific_name}) -> id={species_id}")
-                except Exception as e:
-                    print(f"[identify] Failed to register species: {e}")
+                # 2. ai_species を検索
+                ai_res = (
+                    supabase.table("ai_species")
+                    .select("id, name_ja")
+                    .eq("scientific_name", scientific_name)
+                    .limit(1)
+                    .execute()
+                )
+                if ai_res.data:
+                    ai_species_id = ai_res.data[0]["id"]
+                    name_ja = ai_res.data[0]["name_ja"]
+                else:
+                    # 3. ai_species に新規登録
+                    try:
+                        insert_res = (
+                            supabase.table("ai_species")
+                            .insert({"scientific_name": scientific_name, "name_ja": name_ja})
+                            .execute()
+                        )
+                        if insert_res.data:
+                            ai_species_id = insert_res.data[0]["id"]
+                    except Exception as e:
+                        print(f"[identify] Failed to register ai_species: {e}")
 
         candidates.append(
             IdentifyCandidate(
                 species_id=species_id,
+                ai_species_id=ai_species_id,
                 name_ja=name_ja,
                 scientific_name=c.get("scientific_name"),
                 confidence=float(c.get("confidence", 0)),
